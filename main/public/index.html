@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>iLogger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style lang="scss">
+body, html {
+  height: 100%;
+}
+
+body {
+  font-family: 'Open Sans';
+  font-weight: 100;
+  display: -webkit-box;
+  display: flex;
+  overflow: hidden;
+  justify-content: center;
+  align-items: center;
+}
+
+/****************************************************************/
+.homescreen {
+  display: block;
+}
+
+/****************************************************************/
+.listbox {
+  display: none;
+  background-color: rgb(143, 143, 143);
+  height: 60%;
+  flex-basis: 80%;
+  border-radius: 10px;
+  border: 1px solid #ffffff00;
+  overflow-y: scroll;
+}
+.wifilist {
+  font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+  height: 20px;
+}
+
+.wifilist td, .wifilist th {
+  padding: 8px;
+}
+
+.wifilist tr:nth-child(even){background-color: #f2f2f2;}
+
+.wifilist tr:hover {background-color: #ddd;}
+
+.btn-group .button {
+  background-color: #8f8f8f; /* Green */
+  border: 1px solid rgb(44, 44, 44);
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  cursor: pointer;
+  float: left;
+  width: 180px;
+}
+
+.btn-group .button:not(:last-child) {
+  border-right: none; /* Prevent double borders */
+}
+
+.btn-group .button:hover {
+  background-color: #999999;
+}
+
+/****************************************************************/
+.device {
+  display: none;
+  flex-basis: 80%;
+}
+
+.form__group {
+  position: relative;
+  padding: 15px 0 0;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.form__field {
+  font-family: inherit;
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid #9b9b9b;
+  outline: 0;
+  font-size: 1.3rem;
+  color: #fff;
+  padding: 7px 0;
+  background: transparent;
+  transition: border-color 0.2s;
+}
+.form__field::placeholder {
+  color: transparent;
+}
+.form__field:placeholder-shown ~ .form__label {
+  font-size: 1.3rem;
+  cursor: text;
+  top: 20px;
+}
+
+.form__label {
+  position: absolute;
+  top: 0;
+  display: block;
+  transition: 0.2s;
+  font-size: 1rem;
+  color: #9b9b9b;
+}
+
+.form__field:focus {
+  padding-bottom: 6px;
+  font-weight: 700;
+  border-width: 3px;
+  border-image: linear-gradient(to right, #11998e, #38ef7d);
+  border-image-slice: 1;
+}
+.form__field:focus ~ .form__label {
+  position: absolute;
+  top: 0;
+  display: block;
+  transition: 0.2s;
+  font-size: 1rem;
+  color: #11998e;
+  font-weight: 700;
+}
+
+/* reset input */
+.form__field:required, .form__field:invalid {
+  box-shadow: none;
+}
+/****************************************************************/
+input ::-webkit-input-placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+input ::-moz-placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+input :-ms-input-placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+input:focus {
+  outline: 0 transparent solid;
+}
+input:focus ::-webkit-input-placeholder {
+  color: rgba(0, 0, 0, 0.7);
+}
+input:focus ::-moz-placeholder {
+  color: rgba(0, 0, 0, 0.7);
+}
+input:focus :-ms-input-placeholder {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.connect {
+  display: none;
+  width: 100%;
+}
+
+.ssid-form {
+  min-height: 10rem;
+  margin: auto;
+  max-width: 50%;
+  padding: .5rem;
+}
+
+.ssid-text {
+  color: white;
+  font-size: 1.5rem;
+  margin: 0 auto;
+  max-width: 50%;
+  padding: .5rem;
+  text-align: center;
+}
+.ssid-text .fa-stack-1x {
+  color: black;
+}
+
+.ssid-username, .ssid-password {
+  background: transparent;
+  border: 0 solid;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  color: rgb(43, 42, 42);
+  display: block;
+  margin: 1rem;
+  padding: .5rem;
+  -webkit-transition: 250ms background ease-in;
+  transition: 250ms background ease-in;
+  width: calc(100% - 3rem);
+}
+.ssid-username:focus, .ssid-password:focus {
+  background: rgb(114, 113, 113);
+  color: black;
+  -webkit-transition: 250ms background ease-in;
+  transition: 250ms background ease-in;
+}
+
+.ssid-forgot-pass {
+  bottom: 0;
+  color: white;
+  cursor: pointer;
+  display: block;
+  font-size: 75%;
+  left: 0;
+  opacity: 0.6;
+  padding: .5rem;
+  position: absolute;
+  text-align: center;
+  width: 100%;
+}
+.ssid-forgot-pass:hover {
+  opacity: 1;
+}
+
+.ssid-submit {
+  border: 1px solid rgb(156, 156, 156);
+  background: transparent;
+  color: rgb(114, 113, 113);
+  display: block;
+  margin: 1rem auto;
+  min-width: 1px;
+  padding: .25rem;
+  -webkit-transition: 250ms background ease-in;
+  transition: 250ms background ease-in;
+  width: 60px;
+}
+.ssid-submit:hover, .ssid-submit:focus {
+  background: rgb(114, 113, 113);
+  color: black;
+  -webkit-transition: 250ms background ease-in;
+  transition: 250ms background ease-in;
+}
+
+[class*=underlay] {
+  left: 0;
+  min-height: 100%;
+  min-width: 100%;
+  position: fixed;
+  top: 0;
+}
+
+.underlay-photo {
+  -webkit-animation: hue-rotate 6s infinite;
+          animation: hue-rotate 6s infinite;
+  background-size: cover;
+  -webkit-filter: grayscale(30%);
+  z-index: -1;
+}
+
+.underlay-black {
+  background: rgba(0, 0, 0, 0.7);
+  z-index: -1;
+}
+
+@-webkit-keyframes hue-rotate {
+  from {
+    -webkit-filter: grayscale(30%) hue-rotate(0deg);
+  }
+  to {
+    -webkit-filter: grayscale(30%) hue-rotate(360deg);
+  }
+}
+
+@keyframes hue-rotate {
+  from {
+    -webkit-filter: grayscale(30%) hue-rotate(0deg);
+  }
+  to {
+    -webkit-filter: grayscale(30%) hue-rotate(360deg);
+  }
+}
+/****************************************************************/
+</style>
+</head>
+
+<body>
+  <div class="underlay-photo"></div>
+  <div class="underlay-black"></div>
+
+  <div class="homescreen" id="homescreenId">
+    <div class="btn-group">
+      <button class="button" onclick="SetupWifi()">Setup Wifi</button>
+      <button class="button" onclick="SetupDevice()">Setup Device</button>
+    </div>
+  </div>
+
+  <div class="listbox" id="listboxId">
+    <table class="wifilist" id="wifitableId"></table>
+  </div>
+
+  <div class="device" id="deviceId">
+    <div class="form__group field">
+      <input type="input" class="form__field" placeholder="Device ID" name="deviceid" id='deviceidInputId' required />
+      <label for="name" class="form__label">Paste Device Id here</label>
+    </div>
+    <div style="display: flex; flex-direction: row;">
+      <button class="ssid-submit button" onclick="SetupDeviceId()">OK</button>
+      <button class="ssid-submit button" onclick="SetupDeviceIdCancel()">Cancel</button>
+    </div>
+  </div>
+  
+  <div class="connect" id="connectId">
+    <form class="ssid-form" id="SSIDformId">
+      <input id="SSIDid" type="ssid" class="ssid-username" autofocus="true" required="true" placeholder="SSID" name="ssid" />
+      <input id="PasswdId" type="password" class="ssid-password" required="true" placeholder="Password" name="password" />
+      <div style="display: flex; flex-direction: row;">
+        <input class="ssid-submit" type="button" onclick="submitConnect()" value="Connect">
+        <input class="ssid-submit" type="button" onclick="handelCancel()" value="Cancel">
+      </div>
+    </form>
+  </div>
+<script>
+const homescreenId = document.getElementById("homescreenId");
+const listboxId = document.getElementById("listboxId");
+const deviceId = document.getElementById("deviceId");
+const wifitableId = document.getElementById("wifitableId");
+const connectId = document.getElementById("connectId");
+const SSIDid = document.getElementById("SSIDid");
+const PasswdId = document.getElementById("PasswdId");
+const SSIDformId = document.getElementById("SSIDformId");
+const deviceidInputId = document.getElementById("deviceidInputId");
+var wifilists = null
+
+function msleep(ms) {
+  return new Promise((resolve, reject) => {
+    if (isNaN(ms) || ms < 0) {
+      reject("invalid_ms");
+      return;
+    }
+    setTimeout(resolve, ms);
+  });
+}
+
+function addRowHandlers() {
+  var rows = wifitableId.getElementsByTagName("tr");
+  for (i = 0; i < rows.length; i++) {
+    var currentRow = wifitableId.rows[i];
+    var createClickHandler = function(row) {
+        return function() { 
+          var cell = row.getElementsByTagName("td")[0];
+          var ssid = cell.innerHTML;
+          SSIDid.value = ssid;
+          listboxId.style.display = "none";
+          connectId.style.display = "block";
+        };
+    };
+
+    currentRow.onclick = createClickHandler(currentRow);
+  }
+}
+
+function ScanWifi() {
+  fetch("/scanwifi", {
+    headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    },
+    method: "get",
+    credentials: "same-origin"
+  })
+  .then(response => response.json())
+  .then(result => {
+    wifilists = result.lists
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+}
+
+(function () {
+  ScanWifi();
+})();
+
+async function SetupWifi() {
+  homescreenId.style.display = "none";
+  listboxId.style.display = "block";
+
+  var tableBody = document.createElement('tbody');
+
+  while (wifilists === null) {
+    await msleep(100);
+  }
+
+  wifilists.forEach(function(rowData) {
+    var row = document.createElement('tr');
+
+    var cellSSID = document.createElement('td');
+    const ssid = document.createTextNode(rowData.ssid);
+    cellSSID.appendChild(ssid);
+    row.appendChild(cellSSID);
+
+    var cellRSSI = document.createElement('td');
+    const img = document.createElement("IMG")
+    if (rowData.rssi > -60) {
+      img.src = "wififull.svg"
+    } else if (rowData.rssi <= -60 && rowData.rssi > -70) {
+      img.src = "wifi3.svg"
+    } else if (rowData.rssi <= -70 && rowData.rssi > -80) {
+      img.src = "wifi2.svg"
+    } else if (rowData.rssi <= -80) {
+      img.src = "wifi1.svg"
+    }
+    
+    cellRSSI.appendChild(img);
+    row.appendChild(cellRSSI);
+    tableBody.appendChild(row);
+  })
+  wifitableId.appendChild(tableBody);
+
+  window.onload = addRowHandlers();
+}
+
+function SetupDevice() {
+  homescreenId.style.display = "none";
+  deviceId.style.display = "block";
+}
+
+function handelCancel() {
+  listboxId.style.display = "block";
+  connectId.style.display = "none";
+  PasswdId.value = "";
+}
+
+function submitConnect() {
+  var elements = SSIDformId.elements;
+
+  var obj ={};
+  for(var i = 0 ; i < elements.length ; i++) {
+    var item = elements.item(i);
+    obj[item.name] = item.value;
+  }
+
+  if (obj.ssid !== '' || obj.ssid !== null) {
+  var reqdata = {
+    ssid: obj.ssid,
+    password: obj.password
+  }
+  console.log("wifi info", reqdata)
+  fetch("/wifiinfo", {
+    headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    },
+    method: "post",
+    credentials: "same-origin",
+    body: JSON.stringify(reqdata)
+  }).then(response => response.json())
+    .then(result => {
+      resolve(result)
+    })
+    .catch(error => {
+      reject(error)
+      console.error('Error:', error);
+    });
+  }
+}
+
+function SetupDeviceId() {
+  fetch("/setdeviceid", {
+    headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    },
+    method: "post",
+    credentials: "same-origin",
+    body: JSON.stringify({deviceid: deviceidInputId.value})
+  }).then(response => response.json())
+    .then(result => {
+      resolve(result)
+    })
+    .catch(error => {
+      reject(error)
+      console.error('Error:', error);
+    });
+  
+  deviceidInputId.value = "";
+  homescreenId.style.display = "block";
+  deviceId.style.display = "none";
+}
+
+function SetupDeviceIdCancel() {
+  deviceidInputId.value = "";
+  homescreenId.style.display = "block";
+  deviceId.style.display = "none";
+}
+</script>
+</body>
+</html>
