@@ -403,6 +403,7 @@ static esp_err_t wifiinfo_get_handler(httpd_req_t *req)
         sprintf(__PASSWORD, "%s", cJSON_GetObjectItem(root, "password")->valuestring);
 
         remaining -= ret;
+        free(string);
         cJSON_Delete(root);
     }
     
@@ -466,12 +467,11 @@ static esp_err_t scanwifi_get_handler(httpd_req_t *req)
     }
 
     string = cJSON_Print(wifilist);
-    // ESP_LOGI(TAG, "%s", string);
 
     // End response
     // httpd_resp_send_chunk(req, NULL, 0);
     httpd_resp_sendstr(req, string);
-
+    free(string);
     cJSON_Delete(wifilist);
     return ESP_OK;
 }
@@ -522,9 +522,12 @@ static esp_err_t setdeviceid_get_handler(httpd_req_t *req)
         nvs_handle_t nvs_handle;
         ESP_LOGI(TAG, "Open storage");
         err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
-        if (err != ESP_OK) {
+        if (err != ESP_OK)
+        {
             ESP_LOGI(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-        } else {
+        }
+        else
+        {
             err = nvs_set_str(nvs_handle, "deviceid", __DEVICEID);
             printf((err != ESP_OK) ? "Failed!\n" : "Done\n");
             err = nvs_commit(nvs_handle);
@@ -533,6 +536,7 @@ static esp_err_t setdeviceid_get_handler(httpd_req_t *req)
         }
 
         remaining -= ret;
+        free(string);
         cJSON_Delete(root);
     }
     

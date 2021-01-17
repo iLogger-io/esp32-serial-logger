@@ -28,11 +28,6 @@
 
 #define BUF_SIZE                2048
 
-#define GPIO_OUTPUT_RESET       4
-#define GPIO_OUTPUT_PIN_SEL     (1ULL<<GPIO_OUTPUT_RESET)
-#define GPIO_INPUT_IO_0         0
-#define GPIO_INPUT_PIN_SEL      (1ULL<<GPIO_INPUT_IO_0)
-
 #define WEBSOCKET_EVENT_CONNECTED_BIT      BIT0
 
 static const char *TAG = "main";
@@ -64,7 +59,7 @@ static void uart_read_buffer()
     };
     uart_param_config(UART_NUM_2, &uart_config);
     uart_driver_install(UART_NUM_2, BUF_SIZE, 0, 0, NULL, 0);
-    uart_set_pin(UART_NUM_2, 17, 16, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_set_pin(UART_NUM_2, GPIO_TX_IO_PIN, GPIO_RX_IO_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     // Configure a temporary buffer for the incoming data
     uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
@@ -75,11 +70,11 @@ static void uart_read_buffer()
         // Write data back to the UART
         if (len > 0) {
             msg_queue_t msg_queue_send;
-            char *str = pvPortMalloc(len);
+            char *str = pvPortMalloc(len + 1);
             memcpy(str, data, len);
+            str[len] = '\0';
             msg_queue_send.str = str;
             msg_queue_send.length = len;
-            // ESP_LOGI(TAG, "Send queue: %d", len);
             if(xQueueSend(uart_queue_hdl, &msg_queue_send, (portTickType) 100) != pdPASS)
             {
                 vPortFree(str);
@@ -101,14 +96,10 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         break;
     case WEBSOCKET_EVENT_DATA:
         if(data->op_code == 1) {
-            // ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
-            // ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
-            // ESP_LOGW(TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
-            // ESP_LOGW(TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
-
             msg_queue_t msg_queue_send;
-            char *str = pvPortMalloc(data->data_len);
+            char *str = pvPortMalloc(data->data_len + 1);
             memcpy(str, data->data_ptr, data->data_len);
+            str[data->data_len] = '\0';
             msg_queue_send.str = str;
             msg_queue_send.length = data->data_len;
             if(xQueueSendFromISR(ws_queue_hdl, &msg_queue_send, NULL) != pdPASS)
@@ -132,11 +123,45 @@ static void wifi_init(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+void read_device_id(void)
+{
+    esp_err_t err;
+    nvs_handle_t nvs_handle;
+    ESP_LOGI(TAG, "Open storage");
+    err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    }
+    else
+    {
+        size_t deviceid_size;
+        err = nvs_get_str(nvs_handle, "deviceid", __DEVICEID, &deviceid_size);
+        switch (err)
+        {
+        case ESP_OK:
+            __DEVICEID[deviceid_size] = '\0';
+            printf("Done\n");
+            printf("[%d] __DEVICEID=%s \n", deviceid_size, __DEVICEID);
+            break;
+        case ESP_ERR_NVS_NOT_FOUND:
+            printf("The value is not initialized yet!\n");
+            break;
+        default:
+            printf("Error (%s) reading!\n", esp_err_to_name(err));
+        }
+
+        // Close
+        nvs_close(nvs_handle);
+    }
+}
+
 static void app(void *pvParameters)
 {
     TickType_t xLastWakeTime;
     esp_websocket_client_config_t websocket_cfg = {};
-    websocket_cfg.uri = "wss://api.ilogger.io";
+    // websocket_cfg.uri = "wss://api.ilogger.io";
+    websocket_cfg.uri = "ws://192.168.1.167:3000";
 
     uart_queue_hdl = xQueueCreate(20, sizeof(msg_queue_t));
     msg_queue_t msg_queue_receive;
@@ -145,33 +170,7 @@ static void app(void *pvParameters)
     char send_bufer[BUF_SIZE + 512];
     char json_post[512];
 
-    __DEVICEID[0] = '\0';
-
-    esp_err_t err;
-    nvs_handle_t nvs_handle;
-    ESP_LOGI(TAG, "Open storage");
-    err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
-    if (err != ESP_OK) {
-        ESP_LOGI(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-    } else {
-        size_t deviceid_size;
-        err = nvs_get_str(nvs_handle, "deviceid", __DEVICEID, &deviceid_size);
-        switch (err) {
-            case ESP_OK:
-                __DEVICEID[64] = '\0';
-                printf("Done\n");
-                printf("__DEVICEID= %s\n", __DEVICEID);
-                break;
-            case ESP_ERR_NVS_NOT_FOUND:
-                printf("The value is not initialized yet!\n");
-                break;
-            default :
-                printf("Error (%s) reading!\n", esp_err_to_name(err));
-        }
-        
-        // Close
-        nvs_close(nvs_handle);
-    }
+    read_device_id();
 
     // Initialise the xLastWakeTime variable with the current time.
     xLastWakeTime = xTaskGetTickCount();
@@ -193,16 +192,16 @@ static void app(void *pvParameters)
         if(xQueueReceive(uart_queue_hdl, &msg_queue_receive, (portTickType) 1000 / portTICK_RATE_MS) == pdPASS)
         {
             ESP_LOGI(TAG, "Receive queue: %d", msg_queue_receive.length);
-
-            sprintf(json_post, "{\"path\": \"/DeviceSendDataIoT\", \"deviceid\": \"%s\"}", __DEVICEID);
-
-            send_bufer[0] = (char) (strlen(json_post) >> 8);
-            send_bufer[1] = (char) strlen(json_post);
-
-            memcpy(send_bufer + 2, json_post, strlen(json_post));
-            memcpy(send_bufer + 2 + strlen(json_post), msg_queue_receive.str, msg_queue_receive.length);
-
-            esp_websocket_client_send_bin(client, send_bufer, 2 + strlen(json_post) + msg_queue_receive.length, 20000 / portTICK_PERIOD_MS);
+            char *json_string = NULL;
+            cJSON *json_device_data = cJSON_CreateObject();
+            cJSON_AddStringToObject(json_device_data, "topic", "device_data");
+            cJSON *payload = cJSON_CreateObject();
+            cJSON_AddStringToObject(payload, "data", msg_queue_receive.str);
+            cJSON_AddItemToObject(json_device_data, "payload", payload);
+            json_string = cJSON_Print(json_device_data);
+            cJSON_Delete(json_device_data);
+            esp_websocket_client_send(client, json_string, strlen(json_string), 20000 / portTICK_PERIOD_MS);
+            free(json_string);
             vPortFree(msg_queue_receive.str);
         }
 
@@ -213,11 +212,26 @@ static void app(void *pvParameters)
         (portTickType) 1 / portTICK_RATE_MS);
         if (bits & WEBSOCKET_EVENT_CONNECTED_BIT) {
             ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
-            sprintf(json_post, "{\"path\": \"/registerDevice\", \"deviceid\": \"%s\"}", __DEVICEID);
-            send_bufer[0] = (char) (strlen(json_post) >> 8);
-            send_bufer[1] = (char) strlen(json_post);
-            memcpy(send_bufer + 2, json_post, strlen(json_post));
-            esp_websocket_client_send_bin(client, send_bufer, 2 + strlen(json_post), 20000 / portTICK_PERIOD_MS);
+            /* 
+            {
+                topic: 'register_device',
+                payload: {
+                    deviceid: 'NUx9oC139rnCnLP2D+y85EpDW0PYZBQpORcZ0ZHdQk3aoM0LIM6AGVtJHGmtobmp'
+                }
+            }
+            */
+            char *json_string = NULL;
+            cJSON *json_register_device = cJSON_CreateObject();
+            cJSON_AddStringToObject(json_register_device, "topic", "register_device");
+            cJSON *payload = cJSON_CreateObject();
+            cJSON_AddStringToObject(payload, "deviceid", __DEVICEID);
+            ESP_LOGI(TAG, "deviceid:  %s", __DEVICEID);
+            cJSON_AddItemToObject(json_register_device, "payload", payload);
+            json_string = cJSON_Print(json_register_device);
+            ESP_LOGI(TAG, "%s", json_string);
+            cJSON_Delete(json_register_device);
+            esp_websocket_client_send(client, json_string, strlen(json_string), 20000 / portTICK_PERIOD_MS);
+            free(json_string);
             xEventGroupClearBits(wss_event_group, WEBSOCKET_EVENT_CONNECTED_BIT);
         }
     }
@@ -277,13 +291,14 @@ static void mainapp(void *pvParameters)
         if(xQueueReceive(ws_queue_hdl, &msg_queue_receive, (portTickType) 100 / portTICK_RATE_MS) == pdPASS)
         {
             ESP_LOGI(TAG, "Receive ws queue: %d", msg_queue_receive.length);
+            ESP_LOGI(TAG, "%d  %s", strlen(msg_queue_receive.str), msg_queue_receive.str);
             cJSON *root = cJSON_Parse((char *)msg_queue_receive.str);
-            const cJSON *json_tmp = NULL;
+            char *string = cJSON_Print(root);
+            ESP_LOGI(TAG, "%s", string);
 
-            json_tmp = cJSON_GetObjectItemCaseSensitive(root, "command");
-            
-            if (strcmp(json_tmp->valuestring, "command") == 0) {
-                ESP_LOGI(TAG, "command");
+            json_tmp = cJSON_GetObjectItemCaseSensitive(root, "topic");
+            if (strcmp(json_tmp->valuestring, "topic") == 0) {
+                ESP_LOGI(TAG, "topic");
                 json_tmp = cJSON_GetObjectItemCaseSensitive(root, "type");
                 if (strcmp(json_tmp->valuestring, "reset") == 0) {
                     ESP_LOGI(TAG, "reset");
@@ -297,6 +312,7 @@ static void mainapp(void *pvParameters)
                 ESP_LOGI(TAG, "%s", json_tmp->valuestring);
                 uart_write_bytes(UART_NUM_2, (const char *) json_tmp->valuestring, strlen(json_tmp->valuestring));
             }
+            free(string);
             cJSON_Delete(root);
             vPortFree(msg_queue_receive.str);
         }
