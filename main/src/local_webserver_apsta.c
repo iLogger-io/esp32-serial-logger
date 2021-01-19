@@ -207,7 +207,6 @@ static void init_sta_config(char *ssid, char *password) {
 void start_wifi_service(void)
 {
     s_wifi_event_group = xEventGroupCreate();
-    // xTaskCreate(&monitor_task, "monitor_task", 4096, NULL, 5, NULL);
 
     // disable the default wifi logging
 	esp_log_level_set("wifi", ESP_LOG_NONE);
@@ -222,9 +221,6 @@ void start_wifi_service(void)
 	tcpip_adapter_init();
     
     init_static_ip();
-
-	// initialize the wifi event handler
-	// ESP_ERROR_CHECK(esp_event_loop_init(event_handler_apsta, NULL));
 
 	// initialize the WiFi stack in AccessPoint mode with configuration in RAM
 	wifi_init_config_t wifi_init_config = WIFI_INIT_CONFIG_DEFAULT();
@@ -364,7 +360,6 @@ static esp_err_t wifiinfo_get_handler(httpd_req_t *req)
 {
     char buf[128];
     int ret, remaining = req->content_len;
-    // char *ssid = NULL, *password = NULL;
     while (remaining > 0)
     {
         /* Read the data for the request */
@@ -385,19 +380,10 @@ static esp_err_t wifiinfo_get_handler(httpd_req_t *req)
         }
 
         /* Log data received */
-        /* ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
-        ESP_LOGI(TAG, "%.*s", ret, buf);
-        ESP_LOGI(TAG, "===================================="); */
         cJSON *root = cJSON_Parse(buf);
         const cJSON *json_tmp = NULL;
         char *string = cJSON_Print(root);
         ESP_LOGI(TAG, "%s", string);
-
-        // json_tmp = cJSON_GetObjectItemCaseSensitive(root, "ssid");
-        // ssid = cJSON_Print(json_tmp);
-
-        // json_tmp = cJSON_GetObjectItemCaseSensitive(root, "password");
-        // password = cJSON_Print(json_tmp);
 
         sprintf(__SSID, "%s", cJSON_GetObjectItem(root, "ssid")->valuestring);
         sprintf(__PASSWORD, "%s", cJSON_GetObjectItem(root, "password")->valuestring);
@@ -447,29 +433,21 @@ static esp_err_t scanwifi_get_handler(httpd_req_t *req)
     ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
     for (int i = 0; (i < DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++) {
         list = cJSON_CreateObject();
-        if (list == NULL)
-        {
-            // goto end;
-        }
+        if (list == NULL) {}
         cJSON_AddItemToArray(lists, list);
 
         ssid = cJSON_CreateString((char *) ap_info[i].ssid);
-        if (ssid == NULL) {
-            // goto end;
-        }
+        if (ssid == NULL) {}
         cJSON_AddItemToObject(list, "ssid", ssid);
 
         rssi = cJSON_CreateNumber(ap_info[i].rssi);
-        if (rssi == NULL) {
-            // goto end;
-        }
+        if (rssi == NULL) {}
         cJSON_AddItemToObject(list, "rssi", rssi);
     }
 
     string = cJSON_Print(wifilist);
 
     // End response
-    // httpd_resp_send_chunk(req, NULL, 0);
     httpd_resp_sendstr(req, string);
     free(string);
     cJSON_Delete(wifilist);
@@ -586,25 +564,6 @@ void stop_webserver(void)
     httpd_stop(server);
 }
 
-// static void disconnect_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
-// {
-//     httpd_handle_t* server = (httpd_handle_t*) arg;
-//     if (*server) {
-//         ESP_LOGI(TAG, "Stopping webserver");
-//         stop_webserver(*server);
-//         *server = NULL;
-//     }
-// }
-
-// static void connect_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
-// {
-//     httpd_handle_t* server = (httpd_handle_t*) arg;
-//     if (*server == NULL) {
-//         ESP_LOGI(TAG, "Starting webserver");
-//         *server = _start_webserver();
-//     }
-// }
-
 static void http_server_netconn_serve(struct netconn *conn)
 {
   struct netbuf *inbuf;
@@ -674,16 +633,6 @@ void start_webserver(void) {
         netconn_close(conn);
         netconn_delete(conn);
     } else {
-        /* Register event handlers to stop the server when Wi-Fi or Ethernet is disconnected,
-        * and re-start it upon connection.
-        */
-        // ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
-        // ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
-#ifdef CONFIG_EXAMPLE_CONNECT_ETHERNET
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &connect_handler, &server));
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &disconnect_handler, &server));
-#endif // CONFIG_EXAMPLE_CONNECT_ETHERNET
-
         /* Start the server for the first time */
         server = _start_webserver();
     }
